@@ -22,14 +22,44 @@ if os.path.isfile('ising_lattice_lib.so'):
     from IsingLattice_cpp    import IsingLattice as IsingLattice_cpp
 
 ## main program
-def make_B_generator(inp, t_final=None):
-    """Return a generator that makes values of B (magetic field in each step)
-    note: you *should* play with this function
+# def make_B_generator(inp, b_final=None):
+#     """Return a generator that makes values of B (magetic field in each step)
+#     note: you *should* play with this function
     
-    default implementation: always return 0
+#     default implementation: always return 0
+#     """
+#     for val in range(inp['n_steps']):
+#         yield inp['B']
+
+def make_B_generator(inp, B_final=None):
+    """Return a generator that makes values of B (magnetic field in each step).
+    
+    Implement an annealing process similar to the make_T_generator function.
+    It starts at a defined B_top and linearly decreases to B_final over the slope period.
+    Then, it holds at B_final for n_burnin and n_analyze periods.
     """
-    for val in range(inp['n_steps']):
-        yield inp['B']
+    # Define B_top and B_final
+    B_top = inp['B_top']
+    B_final = inp['B_final']
+    
+    n_slope = inp['n_steps'] - inp['n_burnin'] - inp['n_analyze']
+    if n_slope < 0:
+        print('Fatal error: n_steps - n_burnin - n_analyze < 0')
+        print('Terminating program')
+        exit(2)
+    
+    # Linearly decrease B from B_top to B_final over n_slope steps
+    for val in np.linspace(start=B_top, stop=B_final, num=n_slope):
+        yield val
+    
+    # # Hold B_final for the burn-in and analyze periods
+    # for _ in range(inp['n_burnin'] + inp['n_analyze']):
+    #     yield B_final
+    for val in range(inp['n_burnin']):
+        yield B_final
+
+    for val in range(inp['n_analyze']):
+        yield B_final
 
 def make_T_generator(inp, t_final):
     """Return a generator that makes values of T (temperature in each step)
@@ -48,6 +78,8 @@ def make_T_generator(inp, t_final):
 
     # get linearly decreasing values from t_top to t_final
     for val in np.linspace(start=inp['t_top'], stop=t_final, num=n_slope):
+    # do the inverse of the above line
+    # for val in np.linspace(start=t_final, stop=inp['t_top'], num=n_slope):
         yield val
 
     for val in range(inp['n_burnin']):
@@ -90,6 +122,9 @@ def set_input(cmd_line_args):
     inp['file_prefix'] = ''
     inp['multiprocess'] = False
     inp['skip_prog_print'] = False
+    
+    inp['B_top'] = 10 # max b field
+    inp['B_final'] = 0 # min B field
 
     for x in cmd_line_args[1:]:
         if ':' in x:
